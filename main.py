@@ -33,7 +33,7 @@ def extrair_links_individuais(url_listagem):
     prompt_extrair = f"Extraia apenas as URLs de anúncios individuais de imóveis deste texto: {content}. Retorne apenas as URLs separadas por vírgula. Se não houver links de imóveis, responda 'NENHUM'."
     
     completion = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-20b",
         messages=[{"role": "user", "content": prompt_extrair}]
     )
     res = completion.choices[0].message.content
@@ -49,7 +49,7 @@ def analisar_imovel(url_imovel):
     prompt_analise = f"Analise este imóvel: {content}. Filtros: {FILTROS_BUSCA}. Se for compatível, resuma: Título, Preço e link {url_imovel}. Se não for compatível, responda 'NADA_ENCONTRADO'."
     
     completion = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-20b",
         messages=[{"role": "user", "content": prompt_analise}]
     )
     return completion.choices[0].message.content
