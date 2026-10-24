@@ -2,7 +2,7 @@ name: Monitor de Imóveis
 
 on:
   schedule:
-    - cron: '0 * * * *' # Roda a cada hora
+    - cron: '0 */4 * * *' # Roda a cada 4 horas
   workflow_dispatch: # Permite rodar manualmente para testar
 
 jobs:
