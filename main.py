@@ -24,8 +24,8 @@ def buscar_paginas_listagem():
     return [r['url'] for r in busca['results']]
 
 def extrair_links_individuais(url_listagem):
-    # Atualizado para v2 do Firecrawl: usamos scrape() em vez de scrape_url()
-    scrape_result = firecrawl.scrape(url_listagem, params={'formats': ['markdown']})
+    # CORREÇÃO: Removido 'params='. Agora passamos 'formats' diretamente.
+    scrape_result = firecrawl.scrape(url_listagem, formats=['markdown'])
     
     # Pegamos apenas os primeiros 10.000 caracteres para não estourar o limite da Groq
     content = scrape_result['markdown'][:10000] 
@@ -40,10 +40,10 @@ def extrair_links_individuais(url_listagem):
     return [link.strip() for link in res.split(",") if "http" in link] if "NENHUM" not in res else []
 
 def analisar_imovel(url_imovel):
-    # Atualizado para v2 do Firecrawl
-    detalhes = firecrawl.scrape(url_imovel, params={'formats': ['markdown']})
+    # CORREÇÃO: Removido 'params='. Agora passamos 'formats' diretamente.
+    detalhes = firecrawl.scrape(url_imovel, formats=['markdown'])
     
-    # Limitamos o conteúdo do anúncio a 5.000 caracteres (suficiente para a descrição)
+    # Limitamos o conteúdo do anúncio a 5.000 caracteres
     content = detalhes['markdown'][:5000]
     
     prompt_analise = f"Analise este imóvel: {content}. Filtros: {FILTROS_BUSCA}. Se for compatível, resuma: Título, Preço e link {url_imovel}. Se não for compatível, responda 'NADA_ENCONTRADO'."
