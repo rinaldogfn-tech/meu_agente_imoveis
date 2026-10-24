@@ -2,61 +2,73 @@ import os
 import requests
 from groq import Groq
 from tavily import TavilyClient
+from firecrawl import FirecrawlApp
 
 # ================= CONFIGURAÇÕES DE SEGURANÇA =================
-# O código agora busca as chaves nos "Secrets" do GitHub
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY")
+FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY")
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-# Filtros de busca (Você pode editar este texto aqui no GitHub mesmo)
-FILTROS_BUSCA = "aluguel de imóveis em Niterói RJ, máximo 2500 reais, 2 quartos, sites Zap Imóveis, VivaReal, OLX"
+FILTROS_BUSCA = "aluguel de imóveis em Niterói RJ, máximo 2500 reais, 2 quartos, Zap Imóveis ou VivaReal"
 # ==============================================================
 
-# Inicializando as ferramentas
 groq_client = Groq(api_key=GROQ_API_KEY)
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
+firecrawl = FirecrawlApp(api_key=FIRECRAWL_API_KEY)
 
-def buscar_imoveis():
-    busca = tavily_client.search(query=FILTROS_BUSCA, search_depth="advanced", max_results=5)
-    return busca['results']
+def buscar_paginas_listagem():
+    # Busca páginas que contenham as listas de imóveis
+    busca = tavily_client.search(query=FILTROS_BUSCA, search_depth="advanced", max_results=3)
+    return [r['url'] for r in busca['results']]
 
-def analisar_com_ia(resultados):
-    contexto = "\n".join([f"Título: {r['title']}\nURL: {r['url']}\nConteúdo: {r['content']}" for r in resultados])
+def extrair_links_individuais(url_listagem):
+    # O Firecrawl entra na página e extrai o conteúdo em Markdown
+    # Ele tenta encontrar links de anúncios dentro da página
+    scrape_result = firecrawl.scrape_url(url_listagem, params={'formats': ['markdown']})
+    content = scrape_result['markdown']
     
-    prompt = f"""
-    Você é um especialista em busca de imóveis. Analise os resultados abaixo:
-    {contexto}
-    
-    Filtros: {FILTROS_BUSCA}.
-    
-    INSTRUÇÕES CRÍTICAS:
-    1. Ignore links de páginas de listagem geral (ex: links que terminam em /aluguel/imoveis/).
-    2. Procure por URLs que sejam de anúncios ESPECÍFICOS de imóveis.
-    3. Para cada imóvel real encontrado, extraia a URL exata do anúncio.
-    4. Se encontrar apenas páginas de pesquisa genéricas, responda: 'NADA_ENCONTRADO'.
-    
-    Retorne no formato:
-    🏠 [Título do Imóvel] - [Preço]
-    🔗 Link: [URL exata do anúncio]
-    """
+    # Usamos a IA para extrair apenas as URLs de anúncios do texto bruto
+    prompt_extrair = f"Extraia apenas as URLs de anúncios individuais de imóveis deste texto: {content}. Retorne apenas as URLs separadas por vírgula. Se não houver links de imóveis, responda 'NENHUM'."
     
     completion = groq_client.chat.completions.create(
-        model="openai/gpt-oss-20b", 
-        messages=[{"role": "user", "content": prompt}]
+        model="openai/gpt-oss-20b",
+        messages=[{"role": "user", "content": prompt_extrair}]
+    )
+    res = completion.choices[0].message.content
+    return [link.strip() for link in res.split(",") if "http" in link] if "NENHUM" not in res else []
+
+def analisar_imovel(url_imovel):
+    # O Firecrawl entra no anúncio ESPECÍFICO e lê tudo
+    detalhes = firecrawl.scrape_url(url_imovel, params={'formats': ['markdown']})
+    content = detalhes['markdown']
+    
+    prompt_analise = f"Analise este imóvel: {content}. Filtros: {FILTROS_BUSCA}. Se for compatível, resuma: Título, Preço e link {url_imovel}. Se não for compatível, responda 'NADA_ENCONTRADO'."
+    
+    completion = groq_client.chat.completions.create(
+        model="openai/gpt-oss-20b",
+        messages=[{"role": "user", "content": prompt_analise}]
     )
     return completion.choices[0].message.content
 
 def enviar_telegram(mensagem):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": mensagem}
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": mensagem, "parse_mode": "Markdown"}
     requests.post(url, json=payload)
 
 # EXECUÇÃO
 if __name__ == "__main__":
-    imoveis = buscar_imoveis()
-    analise = analisar_com_ia(imoveis)
+    urls_listagem = buscar_paginas_listagem()
+    todos_imoveis_encontrados = []
 
-    if "NADA_ENCONTRADO" not in analise:
-        enviar_telegram(f"🏠 *Novos Imóveis Encontrados!*\n\n{analise}")
+    for url in urls_listagem:
+        links_individuais = extrair_links_individuais(url)
+        for link in links_individuais[:5]: # Analisa no máximo 5 por página para não gastar tokens
+            resultado = analisar_imovel(link)
+            if "NADA_ENCONTRADO" not in resultado:
+                todos_imoveis_encontrados.append(resultado)
+
+    if todos_imoveis_encontrados:
+        mensagem_final = "🏠 *Imóveis Filtrados com Precisão:*\n\n" + "\n\n".join(todos_imoveis_encontrados)
+        enviar_telegram(mensagem_final)
