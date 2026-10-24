@@ -24,30 +24,32 @@ def buscar_paginas_listagem():
     return [r['url'] for r in busca['results']]
 
 def extrair_links_individuais(url_listagem):
-    # O Firecrawl entra na página e extrai o conteúdo em Markdown
-    # Ele tenta encontrar links de anúncios dentro da página
-    scrape_result = firecrawl.scrape_url(url_listagem, params={'formats': ['markdown']})
-    content = scrape_result['markdown']
+    # Atualizado para v2 do Firecrawl: usamos scrape() em vez de scrape_url()
+    scrape_result = firecrawl.scrape(url_listagem, params={'formats': ['markdown']})
     
-    # Usamos a IA para extrair apenas as URLs de anúncios do texto bruto
+    # Pegamos apenas os primeiros 10.000 caracteres para não estourar o limite da Groq
+    content = scrape_result['markdown'][:10000] 
+    
     prompt_extrair = f"Extraia apenas as URLs de anúncios individuais de imóveis deste texto: {content}. Retorne apenas as URLs separadas por vírgula. Se não houver links de imóveis, responda 'NENHUM'."
     
     completion = groq_client.chat.completions.create(
-        model="openai/gpt-oss-20b",
+        model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt_extrair}]
     )
     res = completion.choices[0].message.content
     return [link.strip() for link in res.split(",") if "http" in link] if "NENHUM" not in res else []
 
 def analisar_imovel(url_imovel):
-    # O Firecrawl entra no anúncio ESPECÍFICO e lê tudo
-    detalhes = firecrawl.scrape_url(url_imovel, params={'formats': ['markdown']})
-    content = detalhes['markdown']
+    # Atualizado para v2 do Firecrawl
+    detalhes = firecrawl.scrape(url_imovel, params={'formats': ['markdown']})
+    
+    # Limitamos o conteúdo do anúncio a 5.000 caracteres (suficiente para a descrição)
+    content = detalhes['markdown'][:5000]
     
     prompt_analise = f"Analise este imóvel: {content}. Filtros: {FILTROS_BUSCA}. Se for compatível, resuma: Título, Preço e link {url_imovel}. Se não for compatível, responda 'NADA_ENCONTRADO'."
     
     completion = groq_client.chat.completions.create(
-        model="openai/gpt-oss-20b",
+        model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt_analise}]
     )
     return completion.choices[0].message.content
