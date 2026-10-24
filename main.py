@@ -43,7 +43,7 @@ def analisar_com_ia(resultados):
     """
     
     completion = groq_client.chat.completions.create(
-        model="llama3-70b-8192", 
+        model="openai/gpt-oss-20b", 
         messages=[{"role": "user", "content": prompt}]
     )
     return completion.choices[0].message.content
