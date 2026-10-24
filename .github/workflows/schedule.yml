@@ -18,7 +18,7 @@ jobs:
           python-version: '3.9'
 
       - name: Instala dependências
-        run: pip install groq tavily-python requests
+        run: pip install groq tavily-python requests firecrawl-py
 
       - name: Executa o Robô
         env:
