@@ -24,10 +24,26 @@ def buscar_imoveis():
 
 def analisar_com_ia(resultados):
     contexto = "\n".join([f"Título: {r['title']}\nURL: {r['url']}\nConteúdo: {r['content']}" for r in resultados])
-    prompt = f"Analise os seguintes resultados de busca: {contexto}. Filtros: {FILTROS_BUSCA}. Se encontrar imóveis relevantes, retorne os links e resumo. Se não, responda apenas: 'NADA_ENCONTRADO'."
+    
+    prompt = f"""
+    Você é um especialista em busca de imóveis. Analise os resultados abaixo:
+    {contexto}
+    
+    Filtros: {FILTROS_BUSCA}.
+    
+    INSTRUÇÕES CRÍTICAS:
+    1. Ignore links de páginas de listagem geral (ex: links que terminam em /aluguel/imoveis/).
+    2. Procure por URLs que sejam de anúncios ESPECÍFICOS de imóveis.
+    3. Para cada imóvel real encontrado, extraia a URL exata do anúncio.
+    4. Se encontrar apenas páginas de pesquisa genéricas, responda: 'NADA_ENCONTRADO'.
+    
+    Retorne no formato:
+    🏠 [Título do Imóvel] - [Preço]
+    🔗 Link: [URL exata do anúncio]
+    """
     
     completion = groq_client.chat.completions.create(
-        model="openai/gpt-oss-20b", # Verifique se este modelo continua ativo
+        model="llama3-70b-8192", 
         messages=[{"role": "user", "content": prompt}]
     )
     return completion.choices[0].message.content
