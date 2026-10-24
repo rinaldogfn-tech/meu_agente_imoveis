@@ -11,7 +11,7 @@ FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY")
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-FILTROS_BUSCA = "aluguel de imóveis em Niterói RJ, máximo 2500 reais, 2 quartos, Zap Imóveis ou VivaReal"
+FILTROS_BUSCA = "aluguel de imóveis em Niterói RJ, máximo 3000 reais, incluíndo iptu e condomínio, 2 quartos, Zap Imóveis, olx ou VivaReal"
 # ==============================================================
 
 groq_client = Groq(api_key=GROQ_API_KEY)
