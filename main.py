@@ -24,11 +24,11 @@ def buscar_paginas_listagem():
     return [r['url'] for r in busca['results']]
 
 def extrair_links_individuais(url_listagem):
-    # CORREÇÃO: Removido 'params='. Agora passamos 'formats' diretamente.
+    # O resultado agora é um objeto 'Document'
     scrape_result = firecrawl.scrape(url_listagem, formats=['markdown'])
     
-    # Pegamos apenas os primeiros 10.000 caracteres para não estourar o limite da Groq
-    content = scrape_result['markdown'][:10000] 
+    # CORREÇÃO: Trocado ['markdown'] por .markdown
+    content = scrape_result.markdown[:10000] 
     
     prompt_extrair = f"Extraia apenas as URLs de anúncios individuais de imóveis deste texto: {content}. Retorne apenas as URLs separadas por vírgula. Se não houver links de imóveis, responda 'NENHUM'."
     
@@ -40,11 +40,11 @@ def extrair_links_individuais(url_listagem):
     return [link.strip() for link in res.split(",") if "http" in link] if "NENHUM" not in res else []
 
 def analisar_imovel(url_imovel):
-    # CORREÇÃO: Removido 'params='. Agora passamos 'formats' diretamente.
+    # O resultado agora é um objeto 'Document'
     detalhes = firecrawl.scrape(url_imovel, formats=['markdown'])
     
-    # Limitamos o conteúdo do anúncio a 5.000 caracteres
-    content = detalhes['markdown'][:5000]
+    # CORREÇÃO: Trocado ['markdown'] por .markdown
+    content = detalhes.markdown[:5000]
     
     prompt_analise = f"Analise este imóvel: {content}. Filtros: {FILTROS_BUSCA}. Se for compatível, resuma: Título, Preço e link {url_imovel}. Se não for compatível, responda 'NADA_ENCONTRADO'."
     
@@ -53,7 +53,7 @@ def analisar_imovel(url_imovel):
         messages=[{"role": "user", "content": prompt_analise}]
     )
     return completion.choices[0].message.content
-
+    
 def enviar_telegram(mensagem):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": mensagem, "parse_mode": "Markdown"}
