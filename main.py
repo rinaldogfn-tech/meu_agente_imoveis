@@ -18,29 +18,6 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 firecrawl = FirecrawlApp(api_key=FIRECRAWL_API_KEY)
 
-def obter_modelo_ativo(groq_client):
-    modelos = [m.id for m in groq_client.models.list().data if getattr(m, 'active', True)]
-    
-    # Ordem de preferência para tarefas de extração/análise
-    preferencias = [
-        "llama-3.3-70b-versatile",
-        "llama-3.1-70b-versatile",
-        "llama3-70b-8192",
-        "llama3-8b-8192",
-        "mixtral-8x7b-32768",
-        "gemma2-9b-it"
-    ]
-    
-    for modelo in preferencias:
-        if modelo in modelos:
-            return modelo
-            
-    # Caso nenhum dos preferidos esteja na lista, pega o primeiro ativo
-    return modelos[0]
-
-# Configuração dinâmica no script
-MODELO_GROQ = obter_modelo_ativo(groq_client)
-print(f"Usando modelo Groq: {MODELO_GROQ}")
 
 
 def buscar_paginas_listagem():
